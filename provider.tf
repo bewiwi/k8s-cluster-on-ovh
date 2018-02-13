@@ -4,12 +4,14 @@
 ##############
 
 provider "openstack" {
-  auth_url = "https://auth.cloud.ovh.net/v3"
+  user_name  = "${var.user_name}"
+  tenant_name = "${var.tenant_name}"
+  password  = "${var.password}"
+  auth_url  = "${var.auth_url}"
   domain_name = "default"
   alias = "ovh"
-  user_name   = "your-user-name"
-  password    = "your-password"
-  region = "GRA3"
+  region = "${var.region}"
+
 }
 
 

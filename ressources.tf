@@ -3,10 +3,10 @@
 # Provide here informations about your SSH local key pairs, <name> and <public_key> (.pub)
 ##############
 
-resource "openstack_compute_keypair_v2" "mykeypair" {
+resource "openstack_compute_keypair_v2" "ovh_kubernetes" {
   provider = "openstack.ovh"
-  name = "yourkeypairname"
-  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDFZSR..."
+  name = "ovh_kubernetes"
+  public_key = "${file("${var.ssh_key_dir}/id_rsa.pub")}"
 }
 
 
@@ -23,8 +23,8 @@ resource "openstack_compute_instance_v2" "kubeclustermaster" {
   count = 1
   provider = "openstack.ovh"
   image_name = "Ubuntu 16.04"
-  flavor_name = "s1-4"
-  key_pair = "mykeypair"
+  flavor_name = "${var.flavor}"
+  key_pair = "${openstack_compute_keypair_v2.ovh_kubernetes.name}"
   network {
     name = "Ext-Net"
   }
@@ -33,7 +33,7 @@ resource "openstack_compute_instance_v2" "kubeclustermaster" {
        type = "ssh"
        user = "ubuntu"
        agent = "false"
-       private_key = "${file("/pathtoyourssklocalkeys/.ssh/id_rsa")}"
+       private_key = "${file("${var.ssh_key_dir}/id_rsa")}"
     }
     inline = [
       "sudo apt-get update && sudo apt-get install -y apt-transport-https",
@@ -50,7 +50,7 @@ resource "openstack_compute_instance_v2" "kubeclustermaster" {
     ]
   }
   provisioner "local-exec"{
-    command = "scp -o StrictHostKeyChecking=no  -o UserKnownHostsFile=/dev/null ubuntu@${openstack_compute_instance_v2.kubeclustermaster.access_ip_v4}:/home/ubuntu/token ."
+    command = "scp -i ${var.ssh_key_dir}/id_rsa -o StrictHostKeyChecking=no  -o UserKnownHostsFile=/dev/null ubuntu@${openstack_compute_instance_v2.kubeclustermaster.access_ip_v4}:/home/ubuntu/token ."
   }
 }
 
@@ -67,8 +67,8 @@ resource "openstack_compute_instance_v2" "kubeclusterminions" {
   count = 2
   provider = "openstack.ovh"
   image_name = "Ubuntu 16.04"
-  flavor_name = "s1-4"
-  key_pair = "mykeypair"
+  flavor_name = "${var.flavor}"
+  key_pair = "${openstack_compute_keypair_v2.ovh_kubernetes.name}"
   network {
     name = "Ext-Net"
   }
@@ -80,7 +80,7 @@ resource "openstack_compute_instance_v2" "kubeclusterminions" {
        type = "ssh"
        user = "ubuntu"
        agent = "false"
-       private_key = "${file("/Pathtoyoursshlocalkeys/.ssh/id_rsa")}"
+       private_key = "${file("${var.ssh_key_dir}/id_rsa")}"
     } 
  }
  provisioner "remote-exec" {
@@ -88,7 +88,7 @@ resource "openstack_compute_instance_v2" "kubeclusterminions" {
        type = "ssh"
        user = "ubuntu"
        agent = "false"
-       private_key = "${file("/Pathtoyoursshlocalkeys/.ssh/id_rsa")}"
+       private_key = "${file("${var.ssh_key_dir}/id_rsa")}"
     }
     inline = [
      "sudo apt-get update && sudo apt-get install -y apt-transport-https",
@@ -96,7 +96,7 @@ resource "openstack_compute_instance_v2" "kubeclusterminions" {
      "echo \"echo \"deb http://apt.kubernetes.io/ kubernetes-xenial main\" >> /etc/apt/sources.list.d/kubernetes.list\" | sudo -s",
      "sudo apt-get update",
      "sudo apt-get install -y docker.io kubeadm kubectl kubelet kubernetes-cni", 
-     "sudo kubeadm join --token=$(cat /home/ubuntu/token) ${openstack_compute_instance_v2.kubeclustermaster.access_ip_v4}:6443"
+     "sudo kubeadm join --token=$(cat /home/ubuntu/token) ${openstack_compute_instance_v2.kubeclustermaster.access_ip_v4}:6443 --discovery-token-unsafe-skip-ca-verification"
     ]
  }
 }

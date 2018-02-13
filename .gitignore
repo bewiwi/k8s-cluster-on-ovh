@@ -1,0 +1,6 @@
+sshkeys/id_rsa
+sshkeys/id_rsa.pub
+terraform.tfstate
+.terraform
+terraform.tfvars
+token
